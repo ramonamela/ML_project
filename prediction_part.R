@@ -18,22 +18,34 @@ curr_dataset$IncrementPreCategorical <- as.factor(curr_dataset$IncrementPreCateg
 n <- nrow(curr_dataset)   
 
 set.seed(250)
-amount_train <- 0.7
-amount_test <- 0.2
-amount_val <- 0.1
+amount_train <- 0.65
+amount_val <- 0.05
+amount_test <- 0.3
 
-ntrain <- round(amount_train * n)
 ntest <- round(amount_test * n)
-nval <- n - ntrain - ntest
+ntrain <- round(amount_train * n)
+nval <- n - ntest - ntrain
 
 all_ind <- 1:n
-train_ind <- sample(all_ind, ntrain)
-train_data <- curr_dataset[train_ind,]
-all_ind1 <- all_ind[-train_ind]
-test_ind <- sample(all_ind1, ntest)
-test_data <- curr_dataset[test_ind,]
-val_ind <- all_ind[-c(test_ind, train_ind)]
-val_data <- curr_dataset[val_ind,]
+test_data <- curr_dataset[(n - ntest + 1):n,]
+
+train_val_data <- curr_dataset[1:(n-ntest),]
+train_val_ind <- 1:nrow(train_val_data)
+train_ind <- sample(train_val_ind, ntrain)
+
+train_data <- train_val_data[train_ind,]
+val_data <- train_val_data[-train_ind,]
+
+print(n)
+print(ntest + ntrain + nval)
+print(dim(train_val_data))
+print(ntrain + nval)
+print(ntest)
+print(dim(test_data))
+print(ntrain)
+print(dim(train_data))
+print(nval)
+print(dim(val_data))
 
 #merging all stocks in 1 list of dataframes
 d<-list(d1)
