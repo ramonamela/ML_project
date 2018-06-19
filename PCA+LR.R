@@ -289,7 +289,7 @@ for(i in 1:length(filenames)){
       print(j)
       print(z)
       
-      model.svm<- svm(as.factor(as.factor(Y.train[,pos])) ~ ., data=X.train.pca, type="C-classification", cost=j, gamma=z, kernel="radial", scale = FALSE)
+      model.svm<- svm(as.factor(Y.train[,pos]) ~ ., data=X.train.pca, type="C-classification", cost=j, gamma=z, kernel="radial", scale = FALSE)
       predicted_values <- predict (model.svm, newdata=X.val.pca)
       new_prediction <- as.data.frame(predicted_values)
       colnames(new_prediction) <- c(paste0('PredSVMTrain', j, z, filenames[i]))  
@@ -311,7 +311,32 @@ for(j in 1:length(C)){
   }
 }
 
+max_value <- max(benefits)
 
+for(j in 1:length(C)){
+  for(z in 1:length(alpha)){
+    for(choices in 1:10){
+      if(benefits[j,z,choices] == max_value){
+        prevJ <- j
+        prevZ <- z
+        prevChoices <- choices
+        break
+      }
+    }
+  }
+}
+
+for(i in 1:length(filenames)){
+  pos <- which(colnames(Y.train)==paste0('IncrementDayCategorical',filenames[i]))
+  model.svm<- svm(as.factor(Y.train.val[,pos]) ~ ., data=X.train.val.pca, type="C-classification", cost=prevJ, gamma=prevZ, kernel="radial", scale = FALSE)
+  predicted_values <- predict (model.svm, newdata=X.test.pca)
+  
+  new_prediction <- as.data.frame(predicted_values)
+  colnames(new_prediction) <- c(paste0('PredSVMTest',prevChoices,filenames[i]))  
+  Y.test <- cbind(Y.test, new_prediction)
+}
+
+generateBenefitContinuousDay(Y.test, paste0('PredSVMTest',prevChoices), filenames, prevChoices)
 
 
 
