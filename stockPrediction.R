@@ -68,7 +68,7 @@ X.train.val.pca <- as.data.frame(predict(pca.results, X.train.val)$coord[,1:nd])
 X.train.pca <- as.data.frame(predict(pca.results, X.train)$coord[,1:nd])
 X.val.pca <- as.data.frame(predict(pca.results, X.val)$coord[,1:nd])
 
-dataset <- createCompaniesAsRowsDataset(filenames)
+dataset <- createCompaniesAsRowsDataset("/home/ramela/Documents/Master/MVA/ML_project/", filenames)
 dataset_center <- scale(dataset)
 
 count.0.1 <- generate_outliers(dataset_center, perc_outliers = 0.1)
