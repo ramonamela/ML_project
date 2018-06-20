@@ -76,7 +76,7 @@ model.lr.train <- list()
 model.test.prob_pred.lr.val <- list()
 for (i in 1:length(filenames)) {
   ## Linear regression
-  print(i)
+  print(paste0(i, " ", filenames[i]))
   pos <- which(colnames(Y)==paste0('IncrementDay',filenames[i]))
   model.lr.train[[i]] = lm(Y.train[,pos] ~ ., data=X.train.pca)
   model.test.prob_pred.lr.val[[i]] <- predict(model.lr.train[[i]], newdata=X.val.pca)
@@ -93,7 +93,7 @@ amount_mean_lr <- which(performance_stocks_lr == max(unlist(performance_stocks_l
 model.lr.train.val <- list()
 model.test.prob_pred.lr.test <- list()
 for (i in 1:length(filenames)) {  
-  print(i)
+  print(paste0(i, " ", filenames[i]))
   pos <- which(colnames(Y)==paste0('IncrementDay',filenames[i]))
   model.lr.train.val[[i]] = lm(Y.train.val[,pos] ~ ., data=X.train.val.pca)
   model.test.prob_pred.lr.test[[i]] <- predict(model.lr.train.val[[i]], newdata=X.test.pca)
@@ -113,7 +113,7 @@ model.rf.train <- list()
 model.test.prob_pred.rf.val <- list()
 for (i in 1:length(filenames)) {
   ## Linear regression
-  print(i)
+  print(paste0(i, " ", filenames[i]))
   pos <- which(colnames(Y)==paste0('IncrementDayCategorical',filenames[i]))
   curr_factor <- as.factor(Y.train[,pos])
   model.rf.train[[i]] <- randomForest(curr_factor ~ . , data = X.train.pca)
@@ -131,7 +131,7 @@ amount_mean_rf <- which(performance_stocks_rf == max(unlist(performance_stocks_r
 model.rf.train.val <- list()
 model.test.prob_pred.rf.test <- list()
 for (i in 1:length(filenames)) {  
-  print(i)
+  print(paste0(i, " ", filenames[i]))
   pos <- which(colnames(Y)==paste0('IncrementDayCategorical',filenames[i]))
   curr_factor <- as.factor(Y.train.val[,pos])
   model.rf.train.val[[i]] = randomForest(curr_factor ~ ., data=X.train.val.pca)
@@ -139,7 +139,7 @@ for (i in 1:length(filenames)) {
   Y.test <- addColumn(Y.test, model.test.prob_pred.rf.test[[i]], paste0('PredRandomTest',filenames[i]))
 }
 
-generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, amount_mean)
+generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, amount_mean_rf)
 
 ###########################################
 # kNN WITH THE WHOLE DATASET
@@ -149,50 +149,42 @@ library(class)
 
 ## kNN
 model.knn.train <- list()
-amountCenters <- 10
+amountCentersKNN <- 10
+limit_choices <- 10
 for (i in 1:length(filenames)) {
-  print(i)
+  print(paste0(i, " ", filenames[i]))
   pos <- which(colnames(Y)==paste0('IncrementDayCategorical',filenames[i]))
   curr_factor_train <- as.factor(Y.train[,pos])
-  for (centers in 1:amountCenters){
+  for (centers in 1:amountCentersKNN){
     print(centers)
     predicted_labels <- knn(train = X.train.pca, test = X.val.pca,cl = curr_factor_train, k=centers)
-    
-    new_prediction <- as.data.frame(predicted_labels)
-    colnames(new_prediction) <- c(paste0('PredKNNTrain',centers,filenames[i]))  
-    Y.val <- cbind(Y.val, new_prediction)
+    Y.val <- addColumn(Y.val, predicted_labels, paste0('PredKNNTrain',centers,filenames[i]))
   }
 }
 
-benefits <- matrix(, nrow=amountCenters, ncol=10)
-dim(benefits)
-for (centers in 1:amountCenters){
-  print(centers)
-  for (choices in 1:10){
-    print(choices)
+benefits_KNN <- matrix(, nrow=amountCentersKNN, ncol=10)
+
+for (centers in 1:amountCentersKNN){
+  for (choices in 1:limit_choices){
     curr_col_label <- paste0("PredKNNTrain", centers)
-    benefits[centers, choices] <- generateBenefitContinuousDay(Y.val, curr_col_label, filenames, choices)
+    benefits_KNN[centers, choices] <- generateBenefitContinuousDay(Y.val, curr_col_label, filenames, choices)
   }
 }
 
-total_pos <- which(benefits == max(benefits))
-prevChoices <- (total_pos %% 10) + 1
-prevCenters <- ((total_pos - prevChoices) / 10) + 1
-benefits[prevChoices, prevCenters]
+total_pos <- which(benefits_KNN == max(benefits_KNN))
+prevChoicesKNN <- (total_pos %% limit_choices) + 1
+prevCentersKNN <- ((total_pos - prevChoicesKNN) / limit_choices) + 1
 
 for (i in 1:length(filenames)) {
-  print(i)
+  print(paste0(i, " ", filenames[i]))
   pos <- which(colnames(Y)==paste0('IncrementDayCategorical',filenames[i]))
   curr_factor_train <- as.factor(Y.train.val[,pos])
-
-  predicted_labels <- knn(train = X.train.val.pca, test = X.test.pca,cl = curr_factor_train, k=prevCenters)
   
-  new_prediction <- as.data.frame(predicted_labels)
-  colnames(new_prediction) <- c(paste0('PredKNNTest',prevCenters,filenames[i]))  
-  Y.test <- cbind(Y.test, new_prediction)
+  predicted_labels <- knn(train = X.train.val.pca, test = X.test.pca,cl = curr_factor_train, k=prevCentersKNN)
+  Y.test <- addColumn(Y.test, predicted_labels, paste0('PredKNNTest',prevCentersKNN,filenames[i]))
 }
 
-generateBenefitContinuousDay(Y.test, paste0('PredKNNTest', prevCenters), filenames, prevChoices)
+generateBenefitContinuousDay(Y.test, paste0('PredKNNTest', prevCentersKNN), filenames, prevChoicesKNN)
 
 
 ###########################################
@@ -201,29 +193,28 @@ generateBenefitContinuousDay(Y.test, paste0('PredKNNTest', prevCenters), filenam
 
 library(nnet)
 
-size <- c(2,3)
-decay <- c(0.01,0.1)
+sizeNN <- c(2,3)
+decayNN <- c(0.01,0.1)
+limit_choices <- 10
 for(i in 1:length(filenames)){
   pos <- which(colnames(Y.train)==paste0('IncrementDay',filenames[i]))
-  for(j in 1:length(size)){
-    for(z in 1:length(decay)){
-      model.nnet <- nnet(Y.train[,pos]~.,data=X.train.pca,  size=size[j], maxit=5, decay=decay[z],MaxNWts=50000)
+  for(j in 1:length(sizeNN)){
+    for(z in 1:length(decayNN)){
+      model.nnet <- nnet(Y.train[,pos]~.,data=X.train.pca,  size=sizeNN[j], maxit=5, decay=decayNN[z],MaxNWts=100000)
       predicted_values <- predict (model.nnet, newdata=X.val.pca)
-      new_prediction <- as.data.frame(predicted_values)
-      colnames(new_prediction) <- c(paste0('PredNNTrain', j, z, filenames[i]))  
-      Y.val <- cbind(Y.val, new_prediction)
+      Y.val <- addColumn(Y.val, predicted_values, paste0('PredNNTrain', j, '_', z, filenames[i]))
     }
   }
 }
 
-benefits <- array(0, c(length(size),length(decay),10))
-for(j in 1:length(size)){
-  print(j)
-  for(z in 1:length(decay)){
-    print(z)
-    for(choices in 1:10){
+benefits <- array(0, c(length(sizeNN),length(decayNN),limit_choices))
+for(j in 1:length(sizeNN)){
+  print(paste0("Size: ", j))
+  for(z in 1:length(decayNN)){
+    print(paste0("Decay: ", z))
+    for(choices in 1:limit_choices){
       print(choices)
-      curr_col_label <- paste0("PredNNTrain", j, z)
+      curr_col_label <- paste0("PredNNTrain", j, '_', z)
       benefits[j, z, choices] <- generateBenefitContinuousDay(Y.val, curr_col_label, filenames, choices)
     }
   }
@@ -231,13 +222,13 @@ for(j in 1:length(size)){
 
 max_value <- max(benefits)
 
-for(j in 1:length(size)){
-  for(z in 1:length(decay)){
-    for(choices in 1:10){
+for(j in 1:length(sizeNN)){
+  for(z in 1:length(decayNN)){
+    for(choices in 1:limit_choices){
       if(benefits[j,z,choices] == max_value){
-        prevJ <- j
-        prevZ <- z
-        prevChoices <- choices
+        prevJNN <- j
+        prevZNN <- z
+        prevChoicesNN <- choices
         break
       }
     }
@@ -246,15 +237,12 @@ for(j in 1:length(size)){
 
 for(i in 1:length(filenames)){
   pos <- which(colnames(Y.train)==paste0('IncrementDay',filenames[i]))
-  model.nnet <- nnet(Y.train.val[,pos]~.,data=X.train.val.pca,  size=size[prevJ], maxit=5, decay=decay[prevZ],MaxNWts=50000)
+  model.nnet <- nnet(Y.train.val[,pos]~.,data=X.train.val.pca,  size=size[prevJNN], maxit=5, decay=decay[prevZNN],MaxNWts=50000)
   predicted_values <- predict (model.nnet, newdata=X.test.pca)
-  
-  new_prediction <- as.data.frame(predicted_values)
-  colnames(new_prediction) <- c(paste0('PredNNTest',prevChoices,filenames[i]))  
-  Y.test <- cbind(Y.test, new_prediction)
+  Y.test <- addColumn(Y.test, predicted_values, paste0('PredNNTest',prevChoicesNN,filenames[i]))
 }
 
-generateBenefitContinuousDay(Y.test, paste0('PredNNTest',prevChoices), filenames, prevChoices)
+generateBenefitContinuousDay(Y.test, paste0('PredNNTest',prevChoicesNN), filenames, prevChoicesNN)
 
 ###########################################
 # SVM WITH THE WHOLE DATASET
@@ -264,30 +252,30 @@ library(e1071)
 
 C <- c(0.1,5)
 alpha <- c(0.05,0.1)
+limit_choices <- 10
 for(i in 1:length(filenames)){
   pos <- which(colnames(Y.train)==paste0('IncrementDayCategorical',filenames[i]))
+  print(paste0(i, " ", filenames[i]))
   for(j in 1:length(C)){
+    print(paste0("C: ", j))
     for(z in 1:length(alpha)){
-      print(j)
-      print(z)
+      print(paste0("alpha: ", z))
       
       model.svm<- svm(as.factor(Y.train[,pos]) ~ ., data=X.train.pca, type="C-classification", cost=j, gamma=z, kernel="radial", scale = FALSE)
       predicted_values <- predict (model.svm, newdata=X.val.pca)
-      new_prediction <- as.data.frame(predicted_values)
-      colnames(new_prediction) <- c(paste0('PredSVMTrain', j, z, filenames[i]))  
-      Y.val <- cbind(Y.val, new_prediction)
+      Y.val <- addColumn(Y.val, predicted_values, paste0('PredSVMTrain', j, "_", z, filenames[i]))
     }
   }
 }
 
-benefits <- array(0, c(length(C),length(alpha),10))
+benefits <- array(0, c(length(C),length(alpha),limit_choices))
 for(j in 1:length(C)){
-  print(j)
+  print(paste0("C: ", j))
   for(z in 1:length(alpha)){
-    print(z)
-    for(choices in 1:10){
+    print(paste0("alpha: ", z))
+    for(choices in 1:limit_choices){
       print(choices)
-      curr_col_label <- paste0("PredSVMTrain", j, z)
+      curr_col_label <- paste0("PredSVMTrain", j, "_", z)
       benefits[j, z, choices] <- generateBenefitContinuousDay(Y.val, curr_col_label, filenames, choices)
     }
   }
@@ -297,11 +285,11 @@ max_value <- max(benefits)
 
 for(j in 1:length(C)){
   for(z in 1:length(alpha)){
-    for(choices in 1:10){
+    for(choices in 1:limit_choices){
       if(benefits[j,z,choices] == max_value){
-        prevJ <- j
-        prevZ <- z
-        prevChoices <- choices
+        prevJSVM <- j
+        prevZSVM <- z
+        prevChoicesSVM <- choices
         break
       }
     }
@@ -310,15 +298,12 @@ for(j in 1:length(C)){
 
 for(i in 1:length(filenames)){
   pos <- which(colnames(Y.train)==paste0('IncrementDayCategorical',filenames[i]))
-  model.svm<- svm(as.factor(Y.train.val[,pos]) ~ ., data=X.train.val.pca, type="C-classification", cost=prevJ, gamma=prevZ, kernel="radial", scale = FALSE)
+  model.svm<- svm(as.factor(Y.train.val[,pos]) ~ ., data=X.train.val.pca, type="C-classification", cost=prevJSVM, gamma=prevZSVM, kernel="radial", scale = FALSE)
   predicted_values <- predict (model.svm, newdata=X.test.pca)
-  
-  new_prediction <- as.data.frame(predicted_values)
-  colnames(new_prediction) <- c(paste0('PredSVMTest',prevChoices,filenames[i]))  
-  Y.test <- cbind(Y.test, new_prediction)
+  Y.test <- addColumn(Y.test, predicted_values, paste0('PredSVMTest', prevChoices, filenames[i]))
 }
 
-generateBenefitContinuousDay(Y.test, paste0('PredSVMTest',prevChoices), filenames, prevChoices)
+generateBenefitContinuousDay(Y.test, paste0('PredSVMTest',prevChoicesSVM), filenames, prevChoicesSVM)
 
 
 
