@@ -1,10 +1,12 @@
 rm(list=ls())
+
 ###########################################
 # Reading Data
 ###########################################
 filenames <- c("MMM", "AXP", "AAPL", "BA", "CAT", "CVX", "CSCO", "KO", "XOM", "GE", "GS", "HD", "INTC", "IBM", "JNJ", "JPM", "MCD", "MRK", "MSFT", "NKE", "PFE", "PG", "TRV", "UNH", "UTX", "VZ", "V", "WMT", "DIS")
 setwd("/home/ramela/Documents/Master/MVA/ML_project")
 dataset  <- read.csv('all_stocks_7.csv',sep = ';',row.names = 1)
+source("usefulFunctions.R")
 
 ###########################################
 # Partitioning 
@@ -66,8 +68,6 @@ X.train.val.pca <- as.data.frame(predict(pca.results, X.train.val)$coord[,1:nd])
 X.train.pca <- as.data.frame(predict(pca.results, X.train)$coord[,1:nd])
 X.val.pca <- as.data.frame(predict(pca.results, X.val)$coord[,1:nd])
 
-source("verification.R")
-
 ###########################################
 # LINEAR REGRESSION WITH THE WHOLE DATASET
 ###########################################
@@ -80,17 +80,15 @@ for (i in 1:length(filenames)) {
   pos <- which(colnames(Y)==paste0('IncrementDay',filenames[i]))
   model.lr.train[[i]] = lm(Y.train[,pos] ~ ., data=X.train.pca)
   model.test.prob_pred.lr.val[[i]] <- predict(model.lr.train[[i]], newdata=X.val.pca)
-  new_prediction <- as.data.frame(model.test.prob_pred.lr.val[[i]])
-  colnames(new_prediction) <- c(paste0('PredLinearTrain',filenames[i]))  
-  Y.val <- cbind(Y.val, new_prediction)
+  Y.val <- addColumn(Y.val, model.test.prob_pred.lr.val[[i]], paste0('PredLinearTrain', filenames[i]))
 }
 
-performance_stocks <- list()
+performance_stocks_lr <- list()
 for (i in 1:10) {
-  performance_stocks[[i]] <- generateBenefitContinuousDay(Y.val, "PredLinearTrain", filenames, i)
+  performance_stocks_lr[[i]] <- generateBenefitContinuousDay(Y.val, "PredLinearTrain", filenames, i)
 }
 
-amount_mean <- which(performance_stocks == max(unlist(performance_stocks)))[1]
+amount_mean_lr <- which(performance_stocks_lr == max(unlist(performance_stocks_lr)))[1]
 
 model.lr.train.val <- list()
 model.test.prob_pred.lr.test <- list()
@@ -99,12 +97,10 @@ for (i in 1:length(filenames)) {
   pos <- which(colnames(Y)==paste0('IncrementDay',filenames[i]))
   model.lr.train.val[[i]] = lm(Y.train.val[,pos] ~ ., data=X.train.val.pca)
   model.test.prob_pred.lr.test[[i]] <- predict(model.lr.train.val[[i]], newdata=X.test.pca)
-  new_prediction <- as.data.frame(model.test.prob_pred.lr.test[[i]])
-  colnames(new_prediction) <- c(paste0('PredLinearTest',filenames[i]))
-  Y.test <- cbind(Y.test, new_prediction)
+  Y.test <- addColumn(Y.test, model.test.prob_pred.lr.test[[i]], paste0('PredLinearTest',filenames[i]))
 }
 
-generateBenefitContinuousDay(Y.test, "PredLinearTest", filenames, amount_mean)
+generateBenefitContinuousDay(Y.test, "PredLinearTest", filenames, amount_mean_lr)
 
 ###########################################
 # RANDOM FOREST WITH THE WHOLE DATASET
@@ -122,17 +118,15 @@ for (i in 1:length(filenames)) {
   curr_factor <- as.factor(Y.train[,pos])
   model.rf.train[[i]] <- randomForest(curr_factor ~ . , data = X.train.pca)
   model.test.prob_pred.rf.val[[i]] <- predict(model.rf.train[[i]], newdata=X.val.pca)
-  new_prediction <- as.data.frame(model.test.prob_pred.rf.val[[i]])
-  colnames(new_prediction) <- c(paste0('PredRandomTrain',filenames[i]))  
-  Y.val <- cbind(Y.val, new_prediction)
+  Y.val <- addColumn(Y.val, model.test.prob_pred.rf.val[[i]], paste0('PredRandomTrain',filenames[i]))
 }
 
-performance_stocks <- list()
+performance_stocks_rf <- list()
 for (i in 1:10) {
-  performance_stocks[[i]] <- generateBenefitContinuousDay(Y.val, "PredRandomTrain", filenames, i)
+  performance_stocks_rf[[i]] <- generateBenefitContinuousDay(Y.val, "PredRandomTrain", filenames, i)
 }
 
-amount_mean <- which(performance_stocks == max(unlist(performance_stocks)))[1]
+amount_mean_rf <- which(performance_stocks_rf == max(unlist(performance_stocks_rf)))[1]
 
 model.rf.train.val <- list()
 model.test.prob_pred.rf.test <- list()
@@ -142,20 +136,10 @@ for (i in 1:length(filenames)) {
   curr_factor <- as.factor(Y.train.val[,pos])
   model.rf.train.val[[i]] = randomForest(curr_factor ~ ., data=X.train.val.pca)
   model.test.prob_pred.rf.test[[i]] <- predict(model.rf.train.val[[i]], newdata=X.test.pca)
-  new_prediction <- as.data.frame(model.test.prob_pred.rf.test[[i]])
-  colnames(new_prediction) <- c(paste0('PredRandomTest',filenames[i]))
-  Y.test <- cbind(Y.test, new_prediction)
+  Y.test <- addColumn(Y.test, model.test.prob_pred.rf.test[[i]], paste0('PredRandomTest',filenames[i]))
 }
 
 generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, amount_mean)
-
-generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, 1)
-generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, 2)
-generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, 3)
-generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, 4)
-generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, 5)
-generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, 6)
-
 
 ###########################################
 # kNN WITH THE WHOLE DATASET
