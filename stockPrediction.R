@@ -141,6 +141,13 @@ for (i in 1:length(filenames)) {
 
 generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, amount_mean_rf)
 
+
+generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, 1)
+generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, 2)
+generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, 3)
+generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, 4)
+generateBenefitContinuousDay(Y.test, "PredRandomTest", filenames, 5)
+
 ###########################################
 # kNN WITH THE WHOLE DATASET
 ###########################################
@@ -173,7 +180,7 @@ for (centers in 1:amountCentersKNN){
 
 total_pos <- which(benefits_KNN == max(benefits_KNN))
 prevChoicesKNN <- (total_pos %% limit_choices) + 1
-prevCentersKNN <- ((total_pos - prevChoicesKNN) / limit_choices) + 1
+prevCentersKNN <- ((total_pos - prevChoicesKNN + 1) / limit_choices) + 1
 
 for (i in 1:length(filenames)) {
   print(paste0(i, " ", filenames[i]))
@@ -193,7 +200,7 @@ generateBenefitContinuousDay(Y.test, paste0('PredKNNTest', prevCentersKNN), file
 
 library(nnet)
 
-sizeNN <- c(2,3)
+sizeNN <- c(2,5,10)
 decayNN <- c(0.01,0.1)
 limit_choices <- 10
 for(i in 1:length(filenames)){
@@ -237,7 +244,7 @@ for(j in 1:length(sizeNN)){
 
 for(i in 1:length(filenames)){
   pos <- which(colnames(Y.train)==paste0('IncrementDay',filenames[i]))
-  model.nnet <- nnet(Y.train.val[,pos]~.,data=X.train.val.pca,  size=size[prevJNN], maxit=5, decay=decay[prevZNN],MaxNWts=50000)
+  model.nnet <- nnet(Y.train.val[,pos]~.,data=X.train.val.pca,  size=sizeNN[prevJNN], maxit=5, decay=decayNN[prevZNN],MaxNWts=50000)
   predicted_values <- predict (model.nnet, newdata=X.test.pca)
   Y.test <- addColumn(Y.test, predicted_values, paste0('PredNNTest',prevChoicesNN,filenames[i]))
 }
