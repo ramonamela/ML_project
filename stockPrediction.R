@@ -68,6 +68,15 @@ X.train.val.pca <- as.data.frame(predict(pca.results, X.train.val)$coord[,1:nd])
 X.train.pca <- as.data.frame(predict(pca.results, X.train)$coord[,1:nd])
 X.val.pca <- as.data.frame(predict(pca.results, X.val)$coord[,1:nd])
 
+dataset <- createCompaniesAsRowsDataset(filenames)
+dataset_center <- scale(dataset)
+
+count.0.1 <- generate_outliers(dataset_center, perc_outliers = 0.1)
+count.0.2 <- generate_outliers(dataset_center, perc_outliers = 0.2)
+count.0.3 <- generate_outliers(dataset_center, perc_outliers = 0.3)
+count.0.4 <- generate_outliers(dataset_center, perc_outliers = 0.4)
+count.0.5 <- generate_outliers(dataset_center, perc_outliers = 0.5)
+
 ###########################################
 # LINEAR REGRESSION WITH THE WHOLE DATASET
 ###########################################
